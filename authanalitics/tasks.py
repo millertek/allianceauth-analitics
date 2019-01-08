@@ -7,6 +7,7 @@ from .models import AACharacter, AAzKillMonth
 from allianceauth.corputils.models import CorpStats, CorpMember
 from allianceauth.eveonline.models import EveCorporationInfo, EveCharacter
 from django.utils.dateparse import parse_datetime
+from django.db.models import Sum
 
 logger = logging.getLogger(__name__)
 
@@ -77,3 +78,56 @@ def run_stat_model_update():
         #missing = cs.unregistered_members
         #for member in missing:
             #update_character_stats.delay(member.character_id)
+
+def output_stats():
+    active_corp_stats = CorpStats.objects.all()
+    member_alliances = ['499005583', '1900696668'] # hardcoded cause *YOLO*
+    for cs in active_corp_stats:
+        members = cs.mains
+        for member in members:
+            update_character_stats(member.character_id)
+            for alt in member.alts:
+                if alt.alliance_id in member_alliances:
+                    if alt.character_name != member.character_name:
+                        update_character_stats(alt.character_id)
+        #missing = cs.unregistered_members
+        #for member in missing:
+        #    update_character_stats(member.character_id)
+    out_str=""
+    for cs in active_corp_stats:
+        members = cs.mains
+        for member in members:
+            c_stat = AACharacter.objects.get(character=member.character)
+            total_kills = c_stat.ships_destroyed
+            total_losses = c_stat.ships_lost
+            total_year_losses = AAzKillMonth.objects.filter(char=c_stat, year=2018).aggregate(ship_lost_sum=Sum('ships_lost'))['ship_lost_sum']
+            total_year_kills = AAzKillMonth.objects.filter(char=c_stat, year=2018).aggregate(ship_destroyed_sum=Sum('ships_destroyed'))['ship_destroyed_sum']
+         #   print(total_kills)
+          #  print(total_losses)
+           # print(total_year_losses)
+            #print(total_year_kills)
+            alt_str = ""
+            for alt in member.alts:
+                if alt.alliance_id in member_alliances:
+                    if alt.character_name != member.character_name:
+                       a_stat = AACharacter.objects.get(character=alt)
+                       total_kills += a_stat.ships_destroyed
+                       total_losses += a_stat.ships_lost
+                       total_year_losses +=  AAzKillMonth.objects.filter(char=a_stat, year=2018).aggregate(ship_lost_sum=Sum('ships_lost'))['ship_lost_sum']
+                       total_year_kills +=  AAzKillMonth.objects.filter(char=a_stat, year=2018).aggregate(ship_destroyed_sum=Sum('ships_destroyed'))['ship_destroyed_sum']
+                       alt_str += ","
+                       alt_str += alt.character_name
+            out_str+=member.character.character_name
+            out_str+=","            
+            out_str+=str(total_kills)
+            out_str+=","
+            out_str+=str(total_losses)
+            out_str+=","
+            out_str+=str(total_year_kills)
+            out_str+=","
+            out_str+=str(total_year_losses)
+            out_str+=alt_str
+            out_str+="\n"
+    print(out_str)
+    with open('MassOutput.csv', 'w') as f:
+        f.write(out_str)
