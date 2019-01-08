@@ -119,6 +119,8 @@ def output_stats():
                        alt_str += alt.character_name
             out_str+=member.character.character_name
             out_str+=","            
+            out_str+=member.character.corporation_name
+            out_str+=","
             out_str+=str(total_kills)
             out_str+=","
             out_str+=str(total_losses)
