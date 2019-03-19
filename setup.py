@@ -8,7 +8,7 @@ os.chdir(os.path.normpath(os.path.join(os.path.abspath(__file__), os.pardir)))
 
 setup(
     name='allianceauth-analitics',
-    version='0.0.0.1a2',
+    version='0.0.0.1a3',
     packages=find_packages(),
     include_package_data=True,
     license='GNU General Public License v3 (GPLv3)',

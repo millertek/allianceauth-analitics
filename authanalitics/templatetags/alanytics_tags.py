@@ -20,7 +20,8 @@ def get_ytd_kills_single(input_id):
         qs_6m = qs.order_by('-year', '-month')[:6].aggregate(ship_destroyed_sum=Sum('ships_destroyed'))['ship_destroyed_sum']
         qs_3m = qs.order_by('-year', '-month')[:3].aggregate(ship_destroyed_sum=Sum('ships_destroyed'))['ship_destroyed_sum']
 
-        return "<td class=\"text-center\">%s</td><td class=\"text-center\">%s</td><td class=\"text-center\">%s</td>" % (str(qs_12m), str(qs_6m), str(qs_3m))
+        return "<td class=\"text-center\">%s</td><td class=\"text-center\">%s</td><td class=\"text-center\">%s</td>" % \
+               (str(qs_12m if qs_12m else 0), str(qs_6m if qs_6m else 0), str(qs_3m if qs_3m else 0))
 
     except:
         return "<td class=\"text-center\">%s</td><td class=\"text-center\">%s</td><td class=\"text-center\">%s</td>" % (str(0), str(0), str(0))
@@ -55,7 +56,8 @@ def get_ytd_kills_account(input_id):
                         'ship_destroyed_sum']
             except:
                 pass
-            return "<td class=\"text-center\" style=\"vertical-align:middle\">%s</td><td class=\"text-center\" style=\"vertical-align:middle\">%s</td><td class=\"text-center\" style=\"vertical-align:middle\">%s</td>" % (str(qs_12m), str(qs_6m), str(qs_3m))
+            return "<td class=\"text-center\" style=\"vertical-align:middle\">%s</td><td class=\"text-center\" style=\"vertical-align:middle\">%s</td><td class=\"text-center\" style=\"vertical-align:middle\">%s</td>" % \
+                   (str(qs_12m if qs_12m else 0), str(qs_6m if qs_6m else 0), str(qs_3m if qs_3m else 0))
 
     except:
         return "<td class=\"text-center\" style=\"vertical-align:middle\">%s</td><td class=\"text-center\" style=\"vertical-align:middle\">%s</td><td class=\"text-center\" style=\"vertical-align:middle\">%s</td>" % (str(0), str(0), str(0))
