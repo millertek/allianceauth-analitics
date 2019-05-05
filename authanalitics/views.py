@@ -13,6 +13,6 @@ def outputcsv(request):
 
     writer = csv.writer(response)
     writer.writerow(['Name', 'Corp', '12m', '6m', '3m'])
-    writer.writerows(output_stats())
+    writer.writerows(output_stats(file_output=False))
 
     return response

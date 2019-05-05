@@ -1,6 +1,7 @@
 import logging
 import requests
 import datetime
+import csv
 
 from celery import shared_task
 
@@ -80,7 +81,7 @@ def run_stat_model_update():
         #for member in missing:
             #update_character_stats.delay(member.character_id)
 
-def output_stats():
+def output_stats(file_output=True):
     active_corp_stats = CorpStats.objects.all()
     #member_alliances = ['499005583', '1900696668'] # hardcoded cause *YOLO*
     #for cs in active_corp_stats:
@@ -98,6 +99,7 @@ def output_stats():
     for cs in active_corp_stats:
         members = cs.mains
         for member in members:
+            print("Adding: %s" % member.character.character_name)
             date_now = datetime.datetime.now()
             try:
                 character = AACharacter.objects.get(character__character_id=member.character.character_id)
@@ -135,5 +137,13 @@ def output_stats():
                 out_arr.append(out_str)
             except:
                 pass
-            
-    return out_arr
+    
+    if file_output:
+        with open('auth_zkill_dump.csv', 'w') as writeFile:
+            writer = csv.writer(writeFile)
+            writer.writerow(['Name', 'Corp', '12m', '6m', '3m'])
+            writer.writerows(out_arr)
+        writeFile.close()
+    else:
+        return out_arr
+    
