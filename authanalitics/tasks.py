@@ -1,5 +1,6 @@
 import logging
 import requests
+import datetime
 
 from celery import shared_task
 
@@ -81,55 +82,55 @@ def run_stat_model_update():
 
 def output_stats():
     active_corp_stats = CorpStats.objects.all()
-    member_alliances = ['499005583', '1900696668'] # hardcoded cause *YOLO*
-    for cs in active_corp_stats:
-        members = cs.mains
-        for member in members:
-            update_character_stats(member.character_id)
-            for alt in member.alts:
-                if alt.alliance_id in member_alliances:
-                    if alt.character_name != member.character_name:
-                        update_character_stats(alt.character_id)
+    #member_alliances = ['499005583', '1900696668'] # hardcoded cause *YOLO*
+    #for cs in active_corp_stats:
+        #members = cs.mains
+        #for member in members:
+            #update_character_stats(member.character_id)
+            #for alt in member.alts:
+                #if alt.alliance_id in member_alliances:
+                    #if alt.character_name != member.character_name:
+                        #update_character_stats(alt.character_id)
         #missing = cs.unregistered_members
         #for member in missing:
         #    update_character_stats(member.character_id)
-    out_str=""
+    out_arr=[]
     for cs in active_corp_stats:
         members = cs.mains
         for member in members:
-            c_stat = AACharacter.objects.get(character=member.character)
-            total_kills = c_stat.ships_destroyed
-            total_losses = c_stat.ships_lost
-            total_year_losses = AAzKillMonth.objects.filter(char=c_stat, year=2018).aggregate(ship_lost_sum=Sum('ships_lost'))['ship_lost_sum']
-            total_year_kills = AAzKillMonth.objects.filter(char=c_stat, year=2018).aggregate(ship_destroyed_sum=Sum('ships_destroyed'))['ship_destroyed_sum']
-         #   print(total_kills)
-          #  print(total_losses)
-           # print(total_year_losses)
-            #print(total_year_kills)
-            alt_str = ""
-            for alt in member.alts:
-                if alt.alliance_id in member_alliances:
-                    if alt.character_name != member.character_name:
-                       a_stat = AACharacter.objects.get(character=alt)
-                       total_kills += a_stat.ships_destroyed
-                       total_losses += a_stat.ships_lost
-                       total_year_losses +=  AAzKillMonth.objects.filter(char=a_stat, year=2018).aggregate(ship_lost_sum=Sum('ships_lost'))['ship_lost_sum']
-                       total_year_kills +=  AAzKillMonth.objects.filter(char=a_stat, year=2018).aggregate(ship_destroyed_sum=Sum('ships_destroyed'))['ship_destroyed_sum']
-                       alt_str += ","
-                       alt_str += alt.character_name
-            out_str+=member.character.character_name
-            out_str+=","            
-            out_str+=member.character.corporation_name
-            out_str+=","
-            out_str+=str(total_kills)
-            out_str+=","
-            out_str+=str(total_losses)
-            out_str+=","
-            out_str+=str(total_year_kills)
-            out_str+=","
-            out_str+=str(total_year_losses)
-            out_str+=alt_str
-            out_str+="\n"
-    print(out_str)
-    with open('MassOutput.csv', 'w') as f:
-        f.write(out_str)
+            date_now = datetime.datetime.now()
+            character = AACharacter.objects.get(character__character_id=member.character.character_id)
+
+            qs1 = AAzKillMonth.objects.filter(year=date_now.year-1, month__gte=date_now.month, char=character)
+            qs2 = AAzKillMonth.objects.filter(year=date_now.year, char=character)
+            qs = qs1 | qs2
+            qs_12m = qs.order_by('-year', '-month').aggregate(ship_destroyed_sum=Sum('ships_destroyed'))['ship_destroyed_sum']
+            qs_6m = qs.order_by('-year', '-month')[:6].aggregate(ship_destroyed_sum=Sum('ships_destroyed'))['ship_destroyed_sum']
+            qs_3m = qs.order_by('-year', '-month')[:3].aggregate(ship_destroyed_sum=Sum('ships_destroyed'))['ship_destroyed_sum']
+
+            alts = [co.character for co in character.character.character_ownership.user.character_ownerships.all()]
+            for alt in alts:
+                try:
+                    aa_alt = AACharacter.objects.get(character=alt)
+                    if not aa_alt == character:
+                        qsa1 = AAzKillMonth.objects.filter(year=date_now.year - 1, month__gte=date_now.month, char=aa_alt)
+                        qsa2 = AAzKillMonth.objects.filter(year=date_now.year, char=aa_alt)
+                        qsa = qsa1 | qsa2
+                        qs_12m += qsa.order_by('-year', '-month').aggregate(ship_destroyed_sum=Sum('ships_destroyed'))[
+                            'ship_destroyed_sum']
+                        qs_6m += qsa.order_by('-year', '-month')[:6].aggregate(ship_destroyed_sum=Sum('ships_destroyed'))[
+                            'ship_destroyed_sum']
+                        qs_3m += qsa.order_by('-year', '-month')[:3].aggregate(ship_destroyed_sum=Sum('ships_destroyed'))[
+                            'ship_destroyed_sum']
+                except:
+                    pass
+                    
+            out_str=[]
+            out_str.append(member.character.character_name)
+            out_str.append(member.character.corporation_name)
+            out_str.append(str(qs_12m))
+            out_str.append(str(qs_6m))
+            out_str.append(str(qs_3m))
+            out_arr.append(out_str)
+            
+    return out_arr
