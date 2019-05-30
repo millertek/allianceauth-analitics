@@ -10,6 +10,8 @@ from allianceauth.corputils.models import CorpStats, CorpMember
 from allianceauth.eveonline.models import EveCorporationInfo, EveCharacter
 from django.utils.dateparse import parse_datetime
 from django.db.models import Sum
+from django.db.models.functions import Coalesce
+from dateutil.relativedelta import relativedelta
 
 logger = logging.getLogger(__name__)
 
@@ -104,30 +106,97 @@ def output_stats(file_output=True):
             try:
                 character = AACharacter.objects.get(character__character_id=member.character.character_id)
 
-                qs1 = AAzKillMonth.objects.filter(year=date_now.year-1, month__gte=date_now.month, char=character)
+                qs1 = AAzKillMonth.objects.filter(year=date_now.year - 1, month__gte=date_now.month, char=character)
                 qs2 = AAzKillMonth.objects.filter(year=date_now.year, char=character)
                 qs = qs1 | qs2
-                qs_12m = qs.order_by('-year', '-month').aggregate(ship_destroyed_sum=Sum('ships_destroyed'))['ship_destroyed_sum']
-                qs_6m = qs.order_by('-year', '-month')[:6].aggregate(ship_destroyed_sum=Sum('ships_destroyed'))['ship_destroyed_sum']
-                qs_3m = qs.order_by('-year', '-month')[:3].aggregate(ship_destroyed_sum=Sum('ships_destroyed'))['ship_destroyed_sum']
+                if date_now.month < 3:
+                    qs_12m = qs.aggregate(ship_destroyed_sum=Coalesce(Sum('ships_destroyed'), 0)).get(
+                        'ship_destroyed_sum', 0)
+                    month_6_ago = 12 + (date_now.month - 6)
+                    month_3_ago = 12 + (date_now.month - 3)
+                    qs_6m = qs.filter(year=date_now.year, char=character). \
+                                aggregate(ship_destroyed_sum=Coalesce(Sum('ships_destroyed'), 0)).get(
+                        'ship_destroyed_sum', 0) + \
+                            qs.filter(year=date_now.year - 1, month__gte=month_6_ago, char=character). \
+                                aggregate(ship_destroyed_sum=Coalesce(Sum('ships_destroyed'), 0)).get(
+                                'ship_destroyed_sum', 0)
+                    qs_3m = qs.filter(year=date_now.year, char=character). \
+                                aggregate(ship_destroyed_sum=Coalesce(Sum('ships_destroyed'), 0)).get(
+                        'ship_destroyed_sum', 0) + \
+                            qs.filter(year=date_now.year - 1, month__gte=month_3_ago, char=character). \
+                                aggregate(ship_destroyed_sum=Coalesce(Sum('ships_destroyed'), 0)).get(
+                                'ship_destroyed_sum', 0)
+                elif date_now.month < 6:
+                    qs_12m = qs.aggregate(ship_destroyed_sum=Coalesce(Sum('ships_destroyed'), 0)).get(
+                        'ship_destroyed_sum', 0)
+                    month_6_ago = 12 + (date_now.month - 6)
+                    qs_6m = qs.filter(year=date_now.year, char=character). \
+                                aggregate(ship_destroyed_sum=Coalesce(Sum('ships_destroyed'), 0)).get(
+                        'ship_destroyed_sum', 0) + \
+                            qs.filter(year=date_now.year - 1, month__gte=month_6_ago, char=character). \
+                                aggregate(ship_destroyed_sum=Coalesce(Sum('ships_destroyed'), 0)).get(
+                                'ship_destroyed_sum', 0)
+                    qs_3m = qs.filter(year=date_now.year, month__gte=date_now.month - 3, char=character). \
+                        aggregate(ship_destroyed_sum=Coalesce(Sum('ships_destroyed'), 0)).get('ship_destroyed_sum', 0)
+                else:
+                    qs_12m = qs.aggregate(ship_destroyed_sum=Coalesce(Sum('ships_destroyed'), 0)).get(
+                        'ship_destroyed_sum', 0)
+                    qs_6m = qs.filter(year=date_now.year, month__gte=date_now.month - 6, char=character). \
+                        aggregate(ship_destroyed_sum=Coalesce(Sum('ships_destroyed'), 0)).get('ship_destroyed_sum', 0)
+                    qs_3m = qs.filter(year=date_now.year, month__gte=date_now.month - 3, char=character). \
+                        aggregate(ship_destroyed_sum=Coalesce(Sum('ships_destroyed'), 0)).get('ship_destroyed_sum', 0)
 
                 alts = [co.character for co in character.character.character_ownership.user.character_ownerships.all()]
                 for alt in alts:
                     try:
                         aa_alt = AACharacter.objects.get(character=alt)
                         if not aa_alt == character:
-                            qsa1 = AAzKillMonth.objects.filter(year=date_now.year - 1, month__gte=date_now.month, char=aa_alt)
+                            qsa1 = AAzKillMonth.objects.filter(year=date_now.year - 1, month__gte=date_now.month,
+                                                               char=aa_alt)
                             qsa2 = AAzKillMonth.objects.filter(year=date_now.year, char=aa_alt)
                             qsa = qsa1 | qsa2
-                            qs_12m += qsa.order_by('-year', '-month').aggregate(ship_destroyed_sum=Sum('ships_destroyed'))[
-                                'ship_destroyed_sum']
-                            qs_6m += qsa.order_by('-year', '-month')[:6].aggregate(ship_destroyed_sum=Sum('ships_destroyed'))[
-                                'ship_destroyed_sum']
-                            qs_3m += qsa.order_by('-year', '-month')[:3].aggregate(ship_destroyed_sum=Sum('ships_destroyed'))[
-                                'ship_destroyed_sum']
+                            if date_now.month < 3:
+                                qs_12m += qsa.aggregate(ship_destroyed_sum=Coalesce(Sum('ships_destroyed'), 0)).get(
+                                    'ship_destroyed_sum', 0)
+                                month_6_ago = 12 + (date_now.month - 6)
+                                month_3_ago = 12 + (date_now.month - 3)
+                                qs_6m += qsa.filter(year=date_now.year, char=character). \
+                                             aggregate(ship_destroyed_sum=Coalesce(Sum('ships_destroyed'), 0)).get(
+                                    'ship_destroyed_sum', 0) + \
+                                         qsa.filter(year=date_now.year - 1, month__gte=month_6_ago, char=character). \
+                                             aggregate(ship_destroyed_sum=Coalesce(Sum('ships_destroyed'), 0)).get(
+                                             'ship_destroyed_sum', 0)
+                                qs_3m += qsa.filter(year=date_now.year, char=character). \
+                                             aggregate(ship_destroyed_sum=Coalesce(Sum('ships_destroyed'), 0)).get(
+                                    'ship_destroyed_sum', 0) + \
+                                         qsa.filter(year=date_now.year - 1, month__gte=month_3_ago, char=character). \
+                                             aggregate(ship_destroyed_sum=Coalesce(Sum('ships_destroyed'), 0)).get(
+                                             'ship_destroyed_sum', 0)
+                            elif date_now.month < 6:
+                                qs_12m += qsa.aggregate(ship_destroyed_sum=Coalesce(Sum('ships_destroyed'), 0)).get(
+                                    'ship_destroyed_sum', 0)
+                                month_6_ago = 12 + (date_now.month - 6)
+                                qs_6m += qsa.filter(year=date_now.year, char=character). \
+                                             aggregate(ship_destroyed_sum=Coalesce(Sum('ships_destroyed'), 0)).get(
+                                    'ship_destroyed_sum', 0) + \
+                                         qsa.filter(year=date_now.year - 1, month__gte=month_6_ago, char=character). \
+                                             aggregate(ship_destroyed_sum=Coalesce(Sum('ships_destroyed'), 0)).get(
+                                             'ship_destroyed_sum', 0)
+                                qs_3m += qsa.filter(year=date_now.year, month__gte=date_now.month - 3, char=character). \
+                                    aggregate(ship_destroyed_sum=Coalesce(Sum('ships_destroyed'), 0)).get(
+                                    'ship_destroyed_sum', 0)
+                            else:
+                                qs_12m += qsa.aggregate(ship_destroyed_sum=Coalesce(Sum('ships_destroyed'), 0)).get(
+                                    'ship_destroyed_sum', 0)
+                                qs_6m += qsa.filter(year=date_now.year, month__gte=date_now.month - 6, char=character). \
+                                    aggregate(ship_destroyed_sum=Coalesce(Sum('ships_destroyed'), 0)).get(
+                                    'ship_destroyed_sum', 0)
+                                qs_3m += qsa.filter(year=date_now.year, month__gte=date_now.month - 3, char=character). \
+                                    aggregate(ship_destroyed_sum=Coalesce(Sum('ships_destroyed'), 0)).get(
+                                    'ship_destroyed_sum', 0)
                     except:
                         pass
-                        
+
                 out_str=[]
                 out_str.append(member.character.character_name)
                 out_str.append(member.character.corporation_name)
