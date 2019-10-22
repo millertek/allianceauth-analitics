@@ -32,6 +32,7 @@ class AAzKillMonth(models.Model):
     ships_lost = models.IntegerField(default=0)
     isk_destroyed = models.BigIntegerField(default=0)
     isk_lost = models.BigIntegerField(default=0)
+    last_update = models.DateTimeField(default=(datetime.datetime.utcnow() - datetime.timedelta(hours=9000)))
 
     def __str__(self):
         return "%s for %s/%s" %(self.char.character.character_name, str(self.month), str(self.year))

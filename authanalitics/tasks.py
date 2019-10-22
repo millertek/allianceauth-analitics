@@ -59,6 +59,7 @@ def update_character_stats(character_id):
             zkill_month.ships_lost = month.get('shipsLost', 0)
             zkill_month.isk_destroyed = month.get('iskDestroyed', 0)
             zkill_month.isk_lost = month.get('iskLost', 0)
+            zkill_month.last_update = datetime.datetime.utcnow().replace(tzinfo=timezone.utc)
             zkill_month.save()
 
     char_model.isk_destroyed = _stats_json.get('iskDestroyed', 0)
