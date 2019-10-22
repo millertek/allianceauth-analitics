@@ -6,7 +6,7 @@ from .models import AACharacter, AAzKillMonth
 admin.site.register(AACharacter)
 
 class month(admin.ModelAdmin):
-    list_display=('char', 'year', 'month')
+    list_display=('char', 'year', 'month', 'last_update')
     search_fields = ['char__character__character_name']
     ordering = ('char','-year','month')
 admin.site.register(AAzKillMonth, month)
