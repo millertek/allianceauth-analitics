@@ -1,6 +1,9 @@
 from django.db import models
 from allianceauth.eveonline.models import EveCharacter
 
+import datetime
+from django.utils import timezone
+
 # Character Stats
 class AACharacter(models.Model):
     character = models.ForeignKey(EveCharacter, on_delete=models.CASCADE)
@@ -14,7 +17,8 @@ class AACharacter(models.Model):
     solo_lost = models.IntegerField(default=0)
     active_pvp_kills = models.IntegerField(default=0)
     last_kill = models.DateTimeField(null=True, default=None)
-    
+    last_update = models.DateTimeField(default=(datetime.datetime.utcnow() - datetime.timedelta(hours=9000)))
+
     def __str__(self):
         return self.character.character_name
 
