@@ -9,10 +9,11 @@ from django.contrib.auth.decorators import login_required, permission_required
 def outputcsv(request):
     # Create the HttpResponse object with the appropriate CSV header.
     response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="somefilename.csv"'
+    response['Content-Disposition'] = 'attachment; filename="auth_zkill_dump.csv"'
 
     writer = csv.writer(response)
     writer.writerow(['Name', 'Corp', '12m', '6m', '3m'])
-    writer.writerows(output_stats(file_output=False))
+    for char, data in output_stats(file_output=False).items():
+        writer.writerow(data)
 
     return response
