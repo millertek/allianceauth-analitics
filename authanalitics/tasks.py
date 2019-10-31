@@ -179,7 +179,8 @@ def output_stats(file_output=True):
         with open('auth_zkill_dump.csv', 'w') as writeFile:
             writer = csv.writer(writeFile)
             writer.writerow(['Name', 'Corp', '12m', '6m', '3m'])
-            writer.writerows(out_arr)
+            for char, data in out_arr.items():
+                writer.writerow(data)
         writeFile.close()
     else:
         return out_arr
