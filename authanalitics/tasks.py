@@ -138,7 +138,48 @@ def run_stat_model_update():
         #missing = cs.unregistered_members
         #for member in missing:
             #update_character_stats.delay(member.character_id)
-    
+            
+@shared_task(name='authanaliticis.tasks.run_aggregate_update')
+def run_aggregate_update():
+    # update all corpstat'd characters
+    #logger.info('start')
+    active_corp_stats = CorpStats.objects.all()
+    member_alliances = ['499005583', '1900696668'] # hardcoded cause *YOLO*
+    now = datetime.datetime.now()
+    month_12_ago = ((now.month - 1 - 12) % 12 + 1)
+    month_6_ago = ((now.month - 1 - 6) % 12 + 1)
+    month_3_ago = ((now.month - 1 - 3) % 12 + 1)
+    year_12_ago = (now.year + floor((now.month - 12) / 12))
+    year_6_ago = (now.year + floor((now.month - 6) / 12))
+    year_3_ago = (now.year + floor((now.month - 3) / 12))
+
+    for cs in active_corp_stats:
+        members = cs.mains
+        for member in members:
+            for alt in member.alts:
+                if alt.alliance_id in member_alliances:
+                    try:
+                        logger.info('update_character_agregates for %s starting' % str(alt.character_name))
+                        character = AACharacter.objects.get(character__character_id=alt.character_id)
+                        qs = AAzKillMonth.objects.filter(char=character)
+                        qs_12m = qs.filter(year=year_12_ago, month__gte=month_12_ago) | \
+                                 qs.filter(year=now.year)
+                        qs_12m = qs_12m.aggregate(ship_destroyed_sum=Coalesce(Sum('ships_destroyed'), 0)).get('ship_destroyed_sum', 0)
+                        qs_6m = qs.filter(year=year_6_ago, month__gte=month_6_ago)
+                        if now.month < 6:
+                            qs_6m = qs_6m | qs.filter(year=now.year)
+                        qs_6m = qs_6m.aggregate(ship_destroyed_sum=Coalesce(Sum('ships_destroyed'), 0)).get('ship_destroyed_sum', 0)
+                        qs_3m = qs.filter(year__gte=year_3_ago, month__gte=month_3_ago)
+                        if now.month < 3:
+                            qs_3m = qs_3m | qs.filter(year=now.year)
+                        qs_3m = qs_3m.aggregate(ship_destroyed_sum=Coalesce(Sum('ships_destroyed'), 0)).get('ship_destroyed_sum', 0)
+                        character.zk_12m = qs_12m
+                        character.zk_6m = qs_6m
+                        character.zk_3m = qs_3m
+                        character.save()
+                    except ObjectDoesNotExist:
+                        logger.info('failed update_character_agregates for %s starting' % str(alt.character_name))
+                        pass # who knows    
 
 def output_stats(file_output=True):
     active_corp_stats = CorpStats.objects.all()
