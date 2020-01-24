@@ -6,7 +6,7 @@ from django.utils import timezone
 
 # Character Stats
 class AACharacter(models.Model):
-    character = models.ForeignKey(EveCharacter, on_delete=models.CASCADE)
+    character = models.OneToOneField(EveCharacter, on_delete=models.CASCADE, related_name='zkill')
     isk_destroyed = models.BigIntegerField(default=0)
     isk_lost = models.BigIntegerField(default=0)
     all_time_sum = models.IntegerField(default=0)
@@ -19,6 +19,10 @@ class AACharacter(models.Model):
     last_kill = models.DateTimeField(null=True, default=None)
     last_update = models.DateTimeField(default=(datetime.datetime.utcnow() - datetime.timedelta(hours=9000)))
 
+    zk_12m = models.IntegerField(default=0)
+    zk_6m = models.IntegerField(default=0)
+    zk_3m = models.IntegerField(default=0)
+    
     def __str__(self):
         return self.character.character_name
 
