@@ -17,7 +17,7 @@ from dateutil.relativedelta import relativedelta
 from time import sleep
 from math import floor
 from allianceauth.services.tasks import QueueOnce
-
+from . import app_settings
 
 logger = logging.getLogger(__name__)
 
@@ -83,13 +83,13 @@ def update_char(self, char_id):
         dt6 = now - relativedelta(months=6)
         dt3 = now - relativedelta(months=3)
         try:
-            logger.info('update_character_stats for %s starting' % str(char_id))
+            #logger.info('update_character_stats for %s starting' % str(char_id))
             update_character_stats(char_id)
         except:
             logger.error('update_character_stats failed for %s' % str(char_id))
             logging.exception("Messsage")
             sleep(1)  # had an error printed it and skipped it YOLO. better wait a sec to not overload the api
-        
+            return 0 # fail
         try:
             character = AACharacter.objects.get(character__character_id=char_id)
             qs = AAzKillMonth.objects.filter(char=character)
@@ -122,16 +122,14 @@ def update_char(self, char_id):
 def run_stat_model_update():
     # update all corpstat'd characters
     #logger.info('start')
-    active_corp_stats = CorpStats.objects.all()
-    member_alliances = ['499005583', '1900696668'] # hardcoded cause *YOLO*
+    member_alliances = app_settings.MEMBER_ALLIANCES # hardcoded cause *YOLO*
+    linked_chars = EveCharacter.objects.filter(alliance_id__in=member_alliances)  # get all authenticated characters in corp from auth internals
 
     sig_list = []
-    for cs in active_corp_stats:
-        members = cs.mains
-        for member in members:
-            for alt in member.alts:
-                if alt.alliance_id in member_alliances:
-                    sig_list.append(update_char.si(alt.character_id))
+
+    for alt in linked_chars:
+        if alt.alliance_id in member_alliances:
+            sig_list.append(update_char.si(alt.character_id))
 
     chain(sig_list).apply_async(priority=8)
             
