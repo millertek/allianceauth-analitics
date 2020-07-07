@@ -49,15 +49,37 @@ def update_character_stats(character_id):
     char_model, created = AACharacter.objects.get_or_create(character = EveCharacter.objects.get(character_id=int(character_id)))
 
     if len(_stats_json.get('months', [])) > 0:
-        for key, month in _stats_json.get('months', []).items():
-            zkill_month, created = AAzKillMonth.objects.get_or_create(char=char_model, year=month.get('year', 0), month=month.get('month', 0))
-            
+        current_data = AAzKillMonth.objects.filter(char=char_model)
+        years = {}
+
+        for m in current_data:
+            if m.year not in years:
+                years[m.year]={}
+            years[m.year][m.month]=m
+        
+        updates = []
+        creates = []
+        for key, month in _stats_json.get('months', []).items(): 
+            new_model = False
+            try:
+                zkill_month = years[month.get('year')][month.get('month')]
+            except KeyError as e:
+                zkill_month = AAzKillMonth(char=char_model, year=month.get('year', 0), month=month.get('month', 0))
+                new_model = True
             zkill_month.ships_destroyed = month.get('shipsDestroyed', 0)
             zkill_month.ships_lost = month.get('shipsLost', 0)
             zkill_month.isk_destroyed = month.get('iskDestroyed', 0)
             zkill_month.isk_lost = month.get('iskLost', 0)
             zkill_month.last_update = datetime.datetime.utcnow().replace(tzinfo=timezone.utc)
-            zkill_month.save()
+            if new_model:
+                creates.append(zkill_month)
+            else:
+                updates.append(zkill_month)
+        
+        if len(updates) > 0:
+            AAzKillMonth.objects.bulk_update(updates, batch_size=500, fields=['ships_destroyed','ships_lost','isk_destroyed','isk_lost','last_update'])
+        if len(creates) > 0:
+            AAzKillMonth.objects.bulk_create(creates, batch_size=500)
 
     char_model.isk_destroyed = _stats_json.get('iskDestroyed', 0)
     char_model.isk_lost = _stats_json.get('iskLost', 0)

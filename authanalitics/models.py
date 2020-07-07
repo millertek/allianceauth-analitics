@@ -39,4 +39,4 @@ class AAzKillMonth(models.Model):
     last_update = models.DateTimeField(default=(datetime.datetime.utcnow() - datetime.timedelta(hours=9000)))
 
     def __str__(self):
-        return "%s for %s/%s" %(self.char.character.character_name, str(self.month), str(self.year))
+        return self.char.character.character_name
