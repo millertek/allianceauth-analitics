@@ -160,7 +160,7 @@ def run_aggregate_update():
     # update all corpstat'd characters
     #logger.info('start')
     active_corp_stats = CorpStats.objects.all()
-    member_alliances = ['499005583', '1900696668'] # hardcoded cause *YOLO*
+    member_alliances = ['99005839'] # hardcoded cause *YOLO*
     now = datetime.datetime.now()
     dt12 = now - relativedelta(months=12)
     dt6 = now - relativedelta(months=6)
@@ -195,7 +195,7 @@ def run_aggregate_update():
 
 def output_stats(file_output=True):
     active_corp_stats = CorpStats.objects.all()
-    #member_alliances = ['499005583', '1900696668'] # hardcoded cause *YOLO*
+    #member_alliances = ['99005839'] # hardcoded cause *YOLO*
     #for cs in active_corp_stats:
         #members = cs.mains
         #for member in members:
